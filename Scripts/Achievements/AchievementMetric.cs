@@ -3,7 +3,6 @@ namespace WeaponMaster.Achievements
     /// <summary>
     /// 칭호(Achievement)가 "무엇을 측정해서" 달성 여부를 판단하는지 나열한다.
     /// </summary>
-    // 칭호가 늘어도 이 목록은 그대로 - 새 칭호는 기존 metric을 재사용하고 threshold만 다르게 추가된다.
     public enum AchievementMetric
     {
         WeaponEquipCount,     // 평생 누적: 무기 장착 횟수
