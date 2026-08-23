@@ -31,75 +31,50 @@
 
 지금 시점의 무기·적·환경은 대부분 Unity 기본 도형(캡슐/큐브 등)에 최소한의 색상 구분만 되어 있는 상태입니다. 세계관/아트 스타일/리소스 제작은 코어 루프가 실제로 재미있는지 검증된 뒤(6단계)로 명시적으로 미뤄뒀고, 그 전까지는 시스템(무기 내구도, 등급, 메타 진행, 증강 등)을 먼저 확실히 다지는 쪽을 택했습니다. 플레이어 캐릭터만 4단계에서 예외적으로 먼저 AI 생성 모델을 적용했습니다.
 
+## 개발 방식
+
+이 프로젝트는 설계와 구현 전 과정에서 Claude와 협업하는 구조로 진행됩니다.
+
+먼저 `GDD.md`(게임 디자인 문서)로 무엇을 만들지 정의하고, 이를 바탕으로 필요한 시스템을 나열한 `Systems.md`, 어떤 순서로 구현할지 정하는 `DevPlan.md`를 차례로 작성합니다. 각 단계에 들어갈 때마다 무엇을 구현할지 Claude와 논의하고 그 결과를 `HANDOFF.md`로 정리해 넘기면, 구현을 맡는 Claude Code는 이를 바탕으로 `Scratchpad.md`에 구현 계획과 수정 범위를 명시하고, 여기 적힌 범위를 지키며 작업합니다. 구현이 끝나면 코드 리뷰와 플레이테스트를 거칩니다.
+
+씬을 통째로 세팅해주는 일회성 편의 스크립트(`Stage1SceneBuilder.cs` 등) 몇 개는 결과만 확인하고 넘어가 이 저장소에서 제외했지만, 그 외 게임플레이 코드는 어떤 부분이 왜 바뀌었는지를 `DevNotes.md`에 기록하며 계속 추적하고 있습니다.
+
 ## 기술 포인트
 
-### 1. 데이터 기반 무기 시스템 (ScriptableObject)
+### 1. Definition - Roster - Editor 패턴
 
-무기 스탯은 하드코딩 대신 `ScriptableObject`로 정의됩니다. 근접/원거리를 서브클래스로 나누지 않고 `category` enum 하나로 커버해, 세 번째 카테고리가 추가되어도 새 enum 값과 필드만 있으면 되도록 설계했습니다.
+무기·칭호·증강·캐릭터, 네 시스템 모두 같은 3단 구조를 씁니다. `Definition`(ScriptableObject 하나)은 개별 요소 하나의 데이터를, `Roster`는 그중 실제로 게임에 포함시킬 것들의 목록을 사람이 확정한 채로 보관합니다. 이 목록을 채우는 작업은 `RosterEditor<TRoster, TDefinition>` 공용 베이스가 담당하는데, 인스펙터에 버튼 하나를 추가해 누르면 지정된 폴더를 스캔해 `Roster`를 채워줍니다.
 
 ```csharp
-[CreateAssetMenu(menuName = "Weapon Master/Weapon Definition", fileName = "WeaponDefinition")]
-public class WeaponDefinition : ScriptableObject
+public abstract class RosterEditor<TRoster, TDefinition> : Editor
+    where TRoster : UnityEngine.Object
+    where TDefinition : UnityEngine.Object
 {
-    [SerializeField] private WeaponCategory category;
-    [SerializeField] private float damage;
-    [SerializeField] private int maxDurability;
-
-    [Header("Grade (GDD 5.5)")]
-    [SerializeField] private WeaponRarity rarity = WeaponRarity.Common;
-    // ...
+    protected abstract string FolderPath { get; }
+    protected abstract string FieldName { get; }
+    // 폴더 스캔 → Roster 필드 채우기는 여기 한 곳에만 있고,
+    // 각 시스템은 FolderPath/FieldName만 지정해 상속받는다.
 }
 ```
 
-등급별 최종 스탯은 런타임 공식으로 계산하지 않고, 사람이 직접 배분하거나 외부 밸런싱 도구가 주입하는 authored 값으로 결정합니다. ([`WeaponDefinition.cs`](Scripts/Weapons/WeaponDefinition.cs))
+새 시스템을 추가할 때 이 패턴을 반복 구현하지 않고 그대로 상속만 받으면 되도록 만들었습니다. ([`RosterEditor.cs`](Scripts/Editor/RosterEditor.cs))
 
-### 2. 저장 시스템 단일 창구
+### 2. 이벤트 기반 디커플링
 
-`PlayerPrefs` 직접 호출을 `SaveHandler` 하나로 몰아뒀습니다. WebGL의 `PlayerPrefs`/IndexedDB 저장 신뢰성 문제를 실제 빌드 테스트 대신 설계로 흡수하기 위한 선택으로, 나중에 저장 유실이 실측되어도 이 창구 하나만 고치면 되게 만들었습니다.
-
-```csharp
-public static class SaveHandler
-{
-    public static void SetInt(string key, int value)
-    {
-        PlayerPrefs.SetInt(key, value);
-        PlayerPrefs.Save(); // 저장 빈도가 낮아 매번 flush해도 비용 부담 없음
-    }
-    // ...
-}
-```
-
-([`SaveHandler.cs`](Scripts/Core/SaveHandler.cs))
-
-### 3. 필요한 만큼만 채택한 Boids
-
-다수의 적이 동시에 스폰될 때 서로 겹치는 문제를 막기 위해 Boids 알고리즘 중 separation(분리) 규칙만 적용했습니다. cohesion/alignment는 추격 방향이 이미 모두를 플레이어 한 점으로 끌어당기므로 굳이 필요하지 않다고 판단해 제외했습니다.
+칭호 시스템처럼 여러 시스템의 상태 변화(무기 장착/파괴, 적 처치, 사망 등)에 반응해야 하는 기능을 안정적으로 붙이려면, 반응하는 쪽이 원본 시스템을 구독하되 원본 시스템은 누가 듣는지 몰라야 한다고 판단했습니다. `PlayerWeaponController`는 무기 장착/해제/파괴 이벤트를 발행할 뿐 `Achievements`나 `Animation` 쪽을 전혀 참조하지 않고, 반대로 그쪽에서 구독합니다.
 
 ```csharp
-private Vector3 ComputeSeparation()
-{
-    Vector3 separation = Vector3.zero;
-    foreach (EnemyAI other in Active)
-    {
-        if (other == this) continue;
-        Vector3 offset = transform.position - other.transform.position;
-        float distance = offset.magnitude;
-        if (distance > 0.0001f && distance < _separationRadius)
-            separation += offset.normalized * (1f - distance / _separationRadius);
-    }
-    return separation;
-}
+// PlayerWeaponController.cs
+public event Action<WeaponBase> WeaponEquipped;
+public event Action WeaponBecameUnarmed;
+public event Action WeaponDestroyed;
+
+// AchievementTracker.cs — 구독하는 쪽만 상대를 안다
+playerWeaponController.WeaponEquipped += HandleWeaponEquipped;
+playerWeaponController.WeaponBecameUnarmed += HandleWeaponBecameUnarmed;
 ```
 
-([`EnemyAI.cs`](Scripts/Enemies/EnemyAI.cs))
-
-### 4. 다중 스택 증강의 곱연산 합산
-
-증강은 레벨링 방식으로 여러 번 선택할 수 있고, 같은 스탯을 겨냥하는 증강이 여러 개 선택되어 있을 수 있습니다. `PlayerAugmentManager`는 매번 전부 순회해 곱해 합산한 뒤 실제 소비처(무기 컨트롤러/이동/체력)에 밀어넣는 구조로, 증강 종류가 늘어나도 로직을 바꿀 필요가 없습니다. ([`PlayerAugmentManager.cs`](Scripts/Augments/PlayerAugmentManager.cs))
-
-### 5. 이름이 곧 설계 문서
-
-`RunStats`→`RunRecordManager`, `SaveSystem`→`SaveHandler`, `WeaponSlot`→`PlayerWeaponController` 등, 개발 중 여러 클래스가 실제 역할에 더 정확히 맞는 이름으로 리네이밍됐습니다. 각 이름이 왜 바뀌었는지는 코드 주석과 `Docs/DevNotes.md`에 남아있습니다.
+같은 원칙이 체력(`HealthComponent`가 배율이 증강에서 온다는 걸 모름), 애니메이션(`PlayerAnimationController`가 게임플레이 쪽을 구독하는 순수 브릿지) 등 여러 곳에 반복 적용되어 있습니다. ([`PlayerWeaponController.cs`](Scripts/Weapons/PlayerWeaponController.cs), [`AchievementTracker.cs`](Scripts/Achievements/AchievementTracker.cs))
 
 ## 폴더 구조
 
