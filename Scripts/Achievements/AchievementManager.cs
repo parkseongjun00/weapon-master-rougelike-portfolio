@@ -6,7 +6,6 @@ namespace WeaponMaster.Achievements
     /// <summary>
     /// 칭호 로스터를 들고 해금 여부/측정값을 SaveHandler에 저장·조회하며, 값이 갱신될 때마다 로스터를 순회해 threshold를 넘긴 칭호를 직접 해금한다.
     /// </summary>
-    // 어떤 게임 이벤트가 값을 만드는지는 모른다 - 그건 AchievementTracker 몫.
     public class AchievementManager : MonoBehaviour
     {
         private const string UnlockKeyPrefix = "achievement_unlocked_";
