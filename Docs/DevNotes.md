@@ -827,7 +827,7 @@ Claude Code의 2단계 UI 마무리 라운드(체력바/XP게이지/데미지팝
 제공된 8개 클립 중 7개에 용도를 부여한다.
 
 | 클립 | 매핑 | 근거 |
-|---|---|
+|---|---|---|
 | `Idle` | 기본 대기 | 이름 그대로 |
 | `Walking` / `Animation_Running` | 이동속도 기반 Idle/Walk/Run 블렌드 트리 | 5단계 '무기별 이동속도 페널티'(`DevPlan.md` §2.6)가 들어오면 실제 이동속도가 무기마다 달라지므로, 이 2단계 블렌드가 실사용된다 |
 | `Left_Short_Hook_from_Guard` / `Right_Upper_Hook_from_Guard` | 맨손(`UnarmedFists`) 근접 공격, 교대로 트리거 | `MeleeWeapon`(맨손도 동일 클래스 인스턴스)의 공격 시 좌/우 번갈아 재생 |
