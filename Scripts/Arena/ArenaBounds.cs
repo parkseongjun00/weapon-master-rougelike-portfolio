@@ -28,7 +28,10 @@ namespace WeaponMaster.Arena
             return RandomPerimeterPoint();
         }
 
-        private Vector3 RandomPerimeterPoint()
+        /// <summary>
+        /// 재시도 없이 가장자리 후보 위치 하나를 반환한다.
+        /// </summary>
+        public Vector3 RandomPerimeterPoint()
         {
             float innerX = halfExtents.x - edgeMargin;
             float innerZ = halfExtents.y - edgeMargin;

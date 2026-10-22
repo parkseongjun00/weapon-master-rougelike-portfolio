@@ -1,104 +1,171 @@
-using System.Collections.Generic;
+using System;
+using System.Collections;
 using UnityEngine;
 using WeaponMaster.Core;
+using WeaponMaster.Movement;
+using WeaponMaster.Weapons;
+using WeaponMaster.Characters;
 
 namespace WeaponMaster.Enemies
 {
     /// <summary>
-    /// 플레이어를 향해 추격하되, Boids 분리(separation) 규칙을 더해 무리가 완전히 겹치지 않으면서 모여들게 한다(GDD 6.1).
+    /// 적의 대상 지정과 전투·표현·풀 재사용 생애주기를 관리한다.
     /// </summary>
-    // 분리 규칙만 구현했다 - 응집(cohesion)/정렬(alignment)은 추격 방향이 이미 모두를 한 지점으로 끌어당기므로 필요하지 않다.
-    // 죽었을 때 스포너 풀로 반납하는 것도 여기서 담당한다 - Active 리스트 등록/해제와 같은 "생애주기 관리" 책임이라, XP 지급(EnemyXPReward)과는 분리해뒀다.
-    [RequireComponent(typeof(HealthComponent))]
+    [RequireComponent(typeof(HealthComponent), typeof(SlotFollower), typeof(NavigationMovement))]
     public class EnemyAI : MonoBehaviour
     {
-        [SerializeField] private float moveSpeed = 3.5f;
-
-        // MVP 단계의 적 수는 매 프레임 이 리스트를 O(n^2)로 순회해도 될 만큼 적어서,
-        // 공간 분할 구조보다 이 방식이 더 단순하고 아직은 그 정도로 충분히 저렴하다.
-        private static readonly List<EnemyAI> Active = new List<EnemyAI>();
-
-        // 적 타입이 하나뿐이라 인스턴스별로 값이 갈릴 이유가 없어 static으로 공유한다 - 값 하나만 바꾸면 활성 상태인 모든 적에 즉시 반영된다.
-        private static float _separationRadius = 1.5f; // 임시값, 추후 조정 대상 - GDD 6.1
-        private static float _separationWeight = 1.5f; // 임시값, 추후 조정 대상 - GDD 6.1
-
-        private Transform _target;
+        [SerializeField] private GameObject healthBarRoot;
+        [SerializeField, Min(0.1f)] private float attackDistance = 1.35f;
         private HealthComponent _health;
-        private EnemySpawner _spawner;
+        private SlotFollower _follower;
+        private NavigationMovement _movement;
+        private Transform _target;
+        private CharacterAnimationController _animation;
+        private WeaponController _weapons;
+        private HealthComponent _targetHealth;
+        private Collider[] _colliders;
+        private bool[] _initialColliderStates;
+        private bool _isDead;
+        private bool _exitCompleted;
+        private bool _readyToFollow;
+
+        /// <summary>
+        /// 사망으로 전투에서 제외된 직후 발생한다.
+        /// </summary>
+        public event Action<EnemyAI> Died;
+
+        /// <summary>
+        /// 퇴장 표현이 끝나 오브젝트를 회수할 수 있을 때 발생한다.
+        /// </summary>
+        public event Action<EnemyAI> ExitCompleted;
 
         private void Awake()
         {
             _health = GetComponent<HealthComponent>();
+            _follower = GetComponent<SlotFollower>();
+            _movement = GetComponent<NavigationMovement>();
+            _animation = GetComponentInChildren<CharacterAnimationController>(true);
+            TryGetComponent(out _weapons);
+            CacheInitialColliderStates();
         }
 
-        public void SetTarget(Transform playerTransform)
+        /// <summary>
+        /// 추종할 대상을 지정한다.
+        /// </summary>
+        public void SetTarget(Transform target)
         {
-            _target = playerTransform;
-        }
-
-        // EnemySpawner가 스폰 시점에 자기 자신을 건네준다(SetTarget과 동일한 패턴) - 씬 전용 오브젝트인
-        // EnemySpawner를 프리팹 쪽이 static Instance 없이도 참조할 수 있게 하는 방법이다.
-        public void SetSpawner(EnemySpawner spawner)
-        {
-            _spawner = spawner;
+            _target = target;
+            _targetHealth = target ? target.GetComponentInParent<HealthComponent>() : null;
+            if (_weapons) _weapons.CancelAttack();
+            _follower.Stop();
+            if (_readyToFollow && !_isDead) _follower.Follow(_target);
         }
 
         private void OnEnable()
         {
-            Active.Add(this);
             _health.OnDeath += HandleDeath;
+            if (_readyToFollow && !_isDead && !_exitCompleted && _health.IsAlive)
+                _follower.Follow(_target);
         }
 
         private void OnDisable()
         {
-            Active.Remove(this);
+            _readyToFollow = false;
+            if (_weapons) _weapons.CancelAttack();
+            _follower.Stop();
+            _movement.Suspend();
             _health.OnDeath -= HandleDeath;
+            StopAllCoroutines();
         }
 
-        // Destroy 대신 스포너의 풀로 반납한다 - 이 호출이 발행하는 EnemySpawner.OnEnemyKilled로 RunRecordManager/AchievementTracker 등이 "적 처치"를 알게 된다.
+        /// <summary>
+        /// 스폰 직후 이전 생애의 전투·표현 상태를 복원한다.
+        /// </summary>
+        public void ResetForReuse()
+        {
+            StopAllCoroutines();
+            _isDead = false;
+            _exitCompleted = false;
+            RestoreColliders();
+            if (_weapons) _weapons.ResetForReuse();
+            if (healthBarRoot) healthBarRoot.SetActive(true);
+            _readyToFollow = _movement.ResetForReuse();
+            if (_readyToFollow) _follower.Follow(_target);
+        }
+
+        // 사망과 퇴장 완료를 알리고, 오브젝트 회수는 구독자가 처리한다.
         private void HandleDeath()
         {
-            _spawner?.ReturnEnemy(this);
+            if (_isDead) return;
+            _isDead = true;
+            if (_weapons) _weapons.CancelAttack();
+            _follower.Stop();
+            _movement.Suspend();
+            DisableColliders();
+            if (healthBarRoot) healthBarRoot.SetActive(false);
+            Died?.Invoke(this);
+            float exitDuration = _animation ? _animation.PlayExit() : 0f;
+            if (exitDuration > 0f) StartCoroutine(ReturnAfterExit(exitDuration));
+            else CompleteExit();
+        }
+
+        private IEnumerator ReturnAfterExit(float duration)
+        {
+            // 재생이 중단되면 반납하고,정상 재생도 클립 길이를 대기 상한으로 삼는다.
+            while (duration > 0f && _animation && _animation.IsExitPlaying)
+            {
+                yield return null;
+                duration -= Time.deltaTime;
+            }
+            CompleteExit();
         }
 
         private void Update()
         {
-            if (!_target) return;
-
-            Vector3 moveDirection = ComputeChaseDirection() + ComputeSeparation() * _separationWeight;
-            if (moveDirection.sqrMagnitude < 0.0001f) return;
-            moveDirection.Normalize();
-
-            transform.position += moveDirection * (moveSpeed * Time.deltaTime);
-            transform.rotation = Quaternion.LookRotation(moveDirection, Vector3.up);
-        }
-
-        private Vector3 ComputeChaseDirection()
-        {
-            Vector3 chaseDirection = _target.position - transform.position;
-            chaseDirection.y = 0f;
-            if (chaseDirection.sqrMagnitude > 0.0001f) chaseDirection.Normalize();
-            return chaseDirection;
-        }
-
-        // Boids 분리(separation) 규칙: 가까운 다른 적일수록 더 강하게 밀어낸다.
-        private Vector3 ComputeSeparation()
-        {
-            Vector3 separation = Vector3.zero;
-            foreach (EnemyAI other in Active)
+            if (_isDead || !_readyToFollow || !_weapons) return;
+            if (!_target || (_targetHealth && !_targetHealth.IsAlive) || !_follower.RefreshTarget())
             {
-                if (other == this) continue;
-
-                Vector3 offset = transform.position - other.transform.position;
-                offset.y = 0f;
-                float distance = offset.magnitude;
-                if (distance > 0.0001f && distance < _separationRadius)
-                {
-                    separation += offset.normalized * (1f - distance / _separationRadius);
-                }
+                _weapons.CancelAttack();
+                _follower.Stop();
+                return;
             }
+            if (_weapons.IsAttacking) return;
+            if (_follower.IsPaused) _follower.Resume();
+            if (!_weapons.CanAttack) return;
+            Vector3 direction = _target.position - transform.position;
+            direction.y = 0f;
+            if (direction.sqrMagnitude > attackDistance * attackDistance || direction.sqrMagnitude < 0.0001f) return;
+            _follower.Pause();
+            _movement.Face(direction);
+            if (!_weapons.TryAttack(direction)) _follower.Resume();
+        }
 
-            return separation;
+        private void CacheInitialColliderStates()
+        {
+            // 비활성 자식을 포함한 모든 Collider의 최초 활성 상태를 보존한다.
+            _colliders = GetComponentsInChildren<Collider>(true);
+            _initialColliderStates = new bool[_colliders.Length];
+            for (int i = 0; i < _colliders.Length; i++)
+                _initialColliderStates[i] = _colliders[i].enabled;
+        }
+
+        private void DisableColliders()
+        {
+            foreach (Collider collider in _colliders)
+                collider.enabled = false;
+        }
+
+        private void RestoreColliders()
+        {
+            for (int i = 0; i < _colliders.Length; i++)
+                _colliders[i].enabled = _initialColliderStates[i];
+        }
+
+        private void CompleteExit()
+        {
+            if (_exitCompleted) return;
+            _exitCompleted = true;
+            ExitCompleted?.Invoke(this);
         }
     }
 }

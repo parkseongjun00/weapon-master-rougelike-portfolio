@@ -5,9 +5,9 @@ using WeaponMaster.Player;
 namespace WeaponMaster.Enemies
 {
     /// <summary>
-    /// 적이 죽는 즉시 XP가 플레이어에게 직접 지급된다(GDD 6.1/7.1) - XP 획득 오브젝트는 생성되지 않는다.
+    /// 적이 죽으면 월드 획득물 없이 XP를 플레이어에게 직접 지급한다.
     /// </summary>
-    // HealthComponent와 분리해 둔 이유는, HealthComponent는 플레이어에게도 쓰이는데 플레이어는 죽는다고 XP를 받으면 안 되기 때문이다.
+    // 플레이어도 사용하는 HealthComponent에 적 전용 보상을 섞지 않는다.
     [RequireComponent(typeof(HealthComponent))]
     public class EnemyXPReward : MonoBehaviour
     {

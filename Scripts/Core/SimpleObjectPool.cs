@@ -6,7 +6,7 @@ namespace WeaponMaster.Core
     /// <summary>
     /// 프리팹 하나를 Instantiate/Destroy 대신 체크아웃/반납으로 재사용한다.
     /// </summary>
-    // 호드 서바이벌 장르 + WebGL 타겟 특성상 반복적인 Instantiate/Destroy의 GC 압박을 줄이기 위해 도입했다. 리셋 훅 인터페이스는 두지 않는다 - 재사용 시 필요한 상태 초기화는 호출부가 명시적으로 처리한다.
+    // 반복 생성·파괴 비용을 줄이며, 재사용 상태 초기화는 호출부가 명시적으로 처리한다.
     public class SimpleObjectPool<T> where T : Component
     {
         private readonly T _prefab;

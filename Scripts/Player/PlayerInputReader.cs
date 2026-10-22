@@ -1,35 +1,45 @@
 using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using WeaponMaster.Input;
 
 namespace WeaponMaster.Player
 {
     /// <summary>
     /// Input System의 원시 액션을 게임플레이 스크립트가 사용하는 단순한 값/이벤트로 변환한다.
     /// </summary>
-    // 이후 단계의 코드는 InputAction을 직접 다루면 안 된다 - PC와 모바일의 바인딩 차이를 나중에 흡수할 지점이 바로 여기다.
+    // 게임플레이 코드는 InputAction을 직접 다루지 않고 변환된 값과 이벤트를 사용한다.
     public class PlayerInputReader : MonoBehaviour
     {
-        [SerializeField] private InputActionAsset inputActions;
+        private GameInputActions _actions;
 
         private InputAction _moveAction;
         private InputAction _aimPointAction;
         private InputAction _attackAction;
-        private InputAction _dropAction;
+        private InputAction _interactAction;
 
         public Vector2 MoveInput { get; private set; }
         public Vector2 AimScreenPosition { get; private set; }
         public bool AttackHeld { get; private set; }
 
-        public event Action DropPerformed;
+        /// <summary>
+        /// 상호작용 버튼(장착/교체/드랍을 문맥에 따라 하나로 묶은 입력)이 눌렸을 때 발행된다.
+        /// </summary>
+        // 입력 에셋의 액션명은 아직 DropWeapon이지만, 게임에서는 통합 상호작용으로 해석한다.
+        public event Action InteractPerformed;
 
         private void Awake()
         {
-            InputActionMap map = inputActions.FindActionMap("Player");
-            _moveAction = map.FindAction("Move");
-            _aimPointAction = map.FindAction("AimPoint");
-            _attackAction = map.FindAction("Attack");
-            _dropAction = map.FindAction("DropWeapon");
+            _actions = new GameInputActions();
+            _moveAction = _actions.Player.Move;
+            _aimPointAction = _actions.Player.AimPoint;
+            _attackAction = _actions.Player.Attack;
+            _interactAction = _actions.Player.DropWeapon;
+        }
+
+        private void OnDestroy()
+        {
+            _actions?.Dispose();
         }
 
         private void OnEnable()
@@ -37,24 +47,24 @@ namespace WeaponMaster.Player
             _moveAction.Enable();
             _aimPointAction.Enable();
             _attackAction.Enable();
-            _dropAction.Enable();
+            _interactAction.Enable();
 
-            _dropAction.performed += OnDrop;
+            _interactAction.performed += OnInteract;
         }
 
         private void OnDisable()
         {
-            _dropAction.performed -= OnDrop;
+            _interactAction.performed -= OnInteract;
 
             _moveAction.Disable();
             _aimPointAction.Disable();
             _attackAction.Disable();
-            _dropAction.Disable();
+            _interactAction.Disable();
         }
 
         private void Update()
         {
-            // 일시정지 중에도 Update()는 계속 호출된다(멈추는 건 deltaTime/FixedUpdate뿐) - 이후 코드가 반응하지 않도록 여기서 입력을 멈춘다.
+            // Update는 일시정지 중에도 호출되므로 게임플레이 입력을 여기서 차단한다.
             if (Time.timeScale <= 0f) return;
 
             MoveInput = _moveAction.ReadValue<Vector2>();
@@ -62,9 +72,9 @@ namespace WeaponMaster.Player
             AttackHeld = _attackAction.IsPressed();
         }
 
-        private void OnDrop(InputAction.CallbackContext context)
+        private void OnInteract(InputAction.CallbackContext context)
         {
-            DropPerformed?.Invoke();
+            InteractPerformed?.Invoke();
         }
     }
 }

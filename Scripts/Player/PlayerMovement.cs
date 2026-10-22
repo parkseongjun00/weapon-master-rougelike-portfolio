@@ -1,13 +1,14 @@
 using UnityEngine;
+using WeaponMaster.Movement;
 
 namespace WeaponMaster.Player
 {
     /// <summary>
     /// 아레나의 평평한 바닥 위에서 플레이어를 이동시킨다.
     /// </summary>
-    // 중력/경사 처리는 없다 - 아레나는 하나의 평평한 평면이므로 수직 낙하를 시뮬레이션해도 실제로 할 일이 없는 불필요한 복잡도일 뿐이다. speedMultiplier는 외부(증강 등)에서 SetSpeedMultiplier로 밀어넣는 값이고, 이 클래스는 그 값이 어디서 오는지 모른다.
+    // 평평한 단일 아레나를 전제로 중력과 경사를 처리하지 않으며, 외부 배율의 출처도 알지 않는다.
     [RequireComponent(typeof(CharacterController))]
-    public class PlayerMovement : MonoBehaviour
+    public class PlayerMovement : MonoBehaviour, IMovementSpeed
     {
         [SerializeField] private PlayerInputReader input;
         [SerializeField] private float moveSpeed = 6f;
@@ -30,8 +31,11 @@ namespace WeaponMaster.Player
             float effectiveSpeed = moveSpeed * _speedMultiplier;
             Vector2 moveInput = input.MoveInput;
             Vector3 move = new Vector3(moveInput.x, 0f, moveInput.y) * effectiveSpeed;
+            Vector3 before = transform.position;
             _controller.Move(move * Time.deltaTime);
-            CurrentSpeed = move.magnitude;
+            Vector3 displacement = transform.position - before;
+            displacement.y = 0f;
+            CurrentSpeed = Time.deltaTime > 0f ? displacement.magnitude / Time.deltaTime : 0f;
         }
 
         public void SetSpeedMultiplier(float multiplier)

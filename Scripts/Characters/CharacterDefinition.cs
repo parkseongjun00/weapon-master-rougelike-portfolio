@@ -15,9 +15,7 @@ namespace WeaponMaster.Characters
         public string DisplayName => displayName;
         public GameObject CharacterPrefab => characterPrefab;
 
-        // 비어 있으면 공용 베이스 Animator Controller를 그대로 쓴다는 뜻이다. 동작(상태 그래프)
-        // 자체가 다른 캐릭터가 생기면 그때는 이 필드가 아니라 별도 베이스 컨트롤러가 필요하다
-        // (DevNotes.md §3.1 참고).
+        // 비어 있으면 공용 베이스 컨트롤러를 사용한다. 상태 그래프가 다르면 별도 베이스가 필요하다.
         public AnimatorOverrideController AnimatorOverrideController => animatorOverrideController;
     }
 }

@@ -6,9 +6,7 @@ namespace WeaponMaster.Core
     /// <summary>
     /// 플레이어와 적이 공유하는 체력/피해/사망 처리 컴포넌트.
     /// </summary>
-    // 액터마다 중복 구현하지 않도록 공유한다.
-    // maxHealthMultiplier는 외부(증강 등)에서 SetMaxHealthMultiplier로 밀어넣는 값이고, 이 클래스는 그 값이 어디서 오는지 모른다.
-    // Enemy_Basic은 아무도 이 메서드를 안 불러 기본값 1로 남으므로, 플레이어의 MaxHealth 증강이 적에게 새는 걸 자연히 막아준다.
+    // 최대 체력 배율은 외부에서 주입하며, 호출되지 않은 액터는 기본값 1을 유지한다.
     public class HealthComponent : MonoBehaviour, IDamageable
     {
         [SerializeField] private float baseMaxHealth = 100f;
@@ -39,8 +37,7 @@ namespace WeaponMaster.Core
             float previousHealth = CurrentHealth;
             CurrentHealth = Mathf.Max(0f, CurrentHealth - amount);
 
-            // 오버킬 시 실제로 깎인 양은 amount보다 작을 수 있어 델타를 따로 계산해 발행한다
-            // - 데미지 숫자 팝업이 실제 적용된 피해량을 표시해야 해서다.
+            // 오버킬을 제외한 실제 피해량을 발행한다.
             OnDamaged?.Invoke(previousHealth - CurrentHealth);
             OnHealthChanged?.Invoke(CurrentHealth, MaxHealth);
 
@@ -51,8 +48,7 @@ namespace WeaponMaster.Core
         }
 
         /// <summary>
-        /// 레벨업 시 사용된다(GDD 7.1: 어떤 증강을 골랐든 레벨업할 때마다 완전 회복).
-        /// MaxHealth도 다시 읽어오므로 방금 고른 MaxHealth 증강이 즉시 반영된다.
+        /// 현재 최대 체력까지 완전히 회복한다.
         /// </summary>
         public void FullHeal()
         {
@@ -61,9 +57,9 @@ namespace WeaponMaster.Core
         }
 
         /// <summary>
-        /// 오브젝트 풀에서 재사용할 때 호출한다(Awake는 재활성화 시 다시 불리지 않으므로 낡은 체력값이 남는 문제를 여기서 해결한다).
+        /// 풀에서 재사용할 수 있도록 체력을 초기화한다.
         /// </summary>
-        // 실제 Instantiate 경로를 타는 플레이어는 이 메서드를 호출하지 않으므로 기존 Awake 동작과 호환된다.
+        // 재활성화 시 Awake가 다시 호출되지 않으므로 풀의 호출부가 명시적으로 실행한다.
         public void ResetForReuse()
         {
             CurrentHealth = MaxHealth;

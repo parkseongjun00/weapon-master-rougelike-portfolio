@@ -3,10 +3,10 @@ using UnityEngine;
 namespace WeaponMaster.Core
 {
     /// <summary>
-    /// PlayerPrefs 직접 호출을 이 클래스 하나로 몰아, 저장 백엔드를 통째로 교체해야 할 때 호출부를 건드리지 않아도 되게 한다. Set 계열은 호출 즉시 PlayerPrefs.Save()까지 실행한다(자동 flush).
+    /// PlayerPrefs 접근을 통합하며, Set 계열 호출을 즉시 저장소에 반영한다.
     /// </summary>
-    // WebGL의 PlayerPrefs/IndexedDB 저장 신뢰성 리스크에 대비해 저장 창구를 여기 하나로 통일했다. 키 이름 상수는 이 클래스가 소유하지 않고 각 호출부가 소유한다.
-    // 저장이 일어나는 시점(런 종료 등)이 매우 드물어 매번 flush해도 비용 부담이 없고, 호출부가 Flush를 깜빡해 저장이 유실되는 실패를 원천 차단한다.
+    // 저장 백엔드 교체 범위를 이 클래스 하나로 제한한다. 키의 소유권은 각 호출부에 있다.
+    // 저장 빈도가 낮아 Set마다 flush하여 호출부의 저장 누락을 방지한다.
     public static class SaveHandler
     {
         public static void SetInt(string key, int value)
