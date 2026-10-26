@@ -1,39 +1,54 @@
 # 공개본 문서 색인
 
-- 공개 편집본: p2 / 2026-10-25
-- 코드 원본: 703affae9ea3a2796f5d657dca5f368c07846b6c
-- 문서 원본: ccf5060401deeba4b5ab9bb7ab53ecf4c9d05988
+| 항목 | 내용 |
+|---|---|
+| 공개 편집본 | p3 · 2026-10-27 |
+| 코드 원본 | `703affae9ea3a2796f5d657dca5f368c07846b6c` |
+| 문서 원본 | `37ba4c4f5d0efc79f396102a7f09d069893e8154` |
+
+---
 
 ## 1. 읽는 순서와 역할
 
 | 문서 | 역할 |
 |---|---|
 | [GDD](GDD.md) | 게임 규칙·설계 기준. 구현 완료 목록과 구분 |
-| [Systems](Systems.md) | 구현 대상 기능 범위 |
-| [DevPlan](DevPlan.md) | 구현 순서와 당시 진행 기록 |
-| [DevNotes](DevNotes/README.md) | 확정된 구현 결정·사유·검증 경계 |
-| [Backlog](Backlog.md) | 보류 항목과 처리 흔적 |
-| [Troubleshooting](Troubleshooting/README.md) | 조사 과정·실패 경로 |
-| [FirstMap](Art/FirstMap.md), [EnemyDesign](Art/EnemyDesign.md) | 환경·적 디자인 기준 |
-| [아트 회의 기록](WorldArtMeetingNotes-2026-09-25.md) | 과거 논의. 현재 기준은 Art 문서 |
+| [Systems](Systems.md) | 구현 대상 시스템·기능 범위 |
+| [DevPlan](DevPlan.md) | 작업 묶음별 구현·확장 순서. 전체 단계나 현재 진도를 표시하지 않음 |
+| [DevNotes](DevNotes/README.md) | 기술 결정·사유·당시 검증과 후속 변경 |
+| [Backlog](Backlog.md) | 사용자가 보존하기로 한 보류 과제와 처리 결과 |
+| [Troubleshooting](Troubleshooting/README.md) | 장기 조사 과정·실패·정정 경로 |
+| [맵 디자인](Design/MapDesign-KoreanFoodStreet.md) | 한국 먹자골목의 공간·환경 기준 |
+| [적 디자인](Design/EnemyDesign.md), [무기 디자인](Design/WeaponDesign.md) | 표현·역할과 후보의 확정 상태 |
+| [회의록](MeetingNotes/README.md) | 회의 시점의 판단·시안 스냅샷 |
 | [DocSystem](DocSystem.md), [WritingGuide](WritingGuide.md) | 문서별 책임과 작성 규칙 |
-| [HANDOFF](HANDOFF.md) | 공개본 범위와 확인 경계 |
-| [공개 작업 초안](DiscussionDraft.md) | 무기 종류 추가를 검토하는 작업 방식 예시 |
+| [공개 HANDOFF](HANDOFF.md) | 공개 편집 범위와 확인 경계 |
+| [공개 작업 초안](DiscussionDraft.md) | 작업 검토·합의·보고 방식의 편집 예시 |
 | [SourceMap](SourceMap.md) | 공개 코드의 원본 경로와 생략 범위 |
+
+---
 
 ## 2. 공개 편집 원칙
 
-- 문서 체계와 개발 기록을 보존하되, 배포 대상·이식 계획의 표현을 제거했습니다. 빌드·성능 미검증이라는 사실은 유지했습니다.
-- 원본 문서의 버전은 원본 식별용으로 보존하고 공개 편집본 p2를 별도로 표시했습니다. 이 편집은 원본 게임 설계의 새로운 기능 확정이 아닙니다.
-- 현재 규칙·계획에 남은 자동 픽업·별도 드랍 버튼·과거 타격 방식 설명을 현 코드에 맞췄습니다.
-- 개발 노트의 과거 이름·실패·검증 결과는 해당 시점의 기록입니다. 현재 이동은 SlotFollower·NavigationMovement, 공통 전투는 WeaponController·CharacterAnimationController를 따릅니다.
-- 초기 범위·과거 완료 표시는 최신 코드 전체의 완료·검증 보장이 아닙니다. 현재 구현 범위는 루트 README와 최신 개발 노트를 함께 확인합니다.
-- 라이브 내부 초안과 로컬 도구·백업·로그·검증 결과 원본은 공개하지 않습니다. DiscussionDraft.md는 작업 방식을 보여 주기 위해 편집한 공개 예시입니다.
-- 생략되거나 교체된 파일을 가리키는 링크는 원본 경로 표기로 전환했습니다. 링크가 남아 있는 파일은 이 저장소 안에서 열 수 있습니다.
-- Private 저장소·개인 서비스의 접근 권한이 필요한 링크는 공개 안내에 사용하지 않습니다.
+- 문서 체계·기획·개발 기록을 보존하되 기존 공개 원칙에 따라 배포 대상과 이식 계획의 구체 표현은 생략했다. 빌드·저장·성능의 미검증 사실은 유지했다.
+- 원본 버전은 문서 식별용으로 보존하고 공개 편집본 p3를 별도로 표시했다. 공개 편집은 새 기능의 채택이나 구현 승인이 아니다.
+- 코드 발췌본 53개와 SourceMap은 기존 기준을 유지했다. 문서 정리가 코드·씬·리소스·실행 검증의 변경을 뜻하지 않는다.
+- Design 폴더·맵 파일명·회의록 폴더와 참조를 정리하고, 트러블슈팅 02의 유의미한 내용은 개발 노트 3.10으로 통합했다.
+- 과거 이름·실패·검증 결과는 기록 시점의 사실이다. 초기 MVP 범위와 과거 완료 표시는 현재 코드 전체의 검증 보장이 아니다.
+- 회의록 이미지 10개는 원본 문서의 생성 시안 PNG다. 채택된 디자인·실제 게임 화면과 구분하며, 실행용 모델·씬·프리팹·패키지는 포함하지 않는다.
+- 라이브 내부 HANDOFF·DiscussionDraft·개인 메모·로컬 도구·로그·검증 원본과 에이전트 운영 파일은 동기화하지 않는다. 공개 HANDOFF와 작업 초안은 별도로 편집한 예시다.
+- 공개하지 않은 파일의 참조는 원본 경로를 적은 일반 텍스트로 표시한다. 클릭 가능한 로컬 링크는 이 저장소에서 열리는 파일만 가리킨다.
+- Private 저장소와 개인 서비스의 접근 권한이 필요한 링크는 공개 안내에 사용하지 않는다.
 
-## 3. 최신 구현으로 이어지는 기록
+---
 
-- 이동 전환: [5.30](DevNotes/05-EnemyAnimation.md#530-navmesh-일반-이동과-역할-이름-전환)
-- 반복 정지 진단과 사용자 확인: [5.31](DevNotes/05-EnemyAnimation.md#531-반경-계산-오차로-인한-슬롯-재구성-반복-수정), [5.32](DevNotes/05-EnemyAnimation.md#532-반복-정지-수정의-사용자-확인과-커밋)
-- 공통 전투와 검증 경계: [5.33](DevNotes/05-EnemyAnimation.md#533-공통-무기모션과-기본-적-펀치), [5.34](DevNotes/05-EnemyAnimation.md#534-공통-공격의-사용자-확인과-커밋)
+## 3. 주요 변경·구현 기록
+
+| 내용 | 기록 |
+|---|---|
+| 무기 프리팹 중심 데이터 | [3.17](DevNotes/03-PlayerAnimation.md#317-프리팹-중심-무기-데이터와-스폰-등록-통합) |
+| 입력·AI와 공통 무기·모션 분리 | [3.31](DevNotes/03-PlayerAnimation.md#331-범용-무기와-사람형-모션-통합) |
+| 첫 맵의 건물 외관·공유 소재 | [4.5](DevNotes/04-EnvironmentArt.md#45-공유-소재와-건물별-외관-구성) |
+| NavMesh 이동 전환 | [5.30](DevNotes/05-EnemyAnimation.md#530-navmesh-일반-이동과-역할-이름-전환) |
+| 반복 정지 원인·수정·사용자 확인 | [5.31](DevNotes/05-EnemyAnimation.md#531-반경-계산-오차로-인한-슬롯-재구성-반복-수정) |
+| 기본 적 펀치와 확인 범위 | [5.33](DevNotes/05-EnemyAnimation.md#533-공통-무기모션과-기본-적-펀치) |
